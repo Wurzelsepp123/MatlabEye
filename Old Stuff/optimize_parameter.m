@@ -389,11 +389,11 @@ while(k<=size(spd_d{u,c},1)-window_size+1)
 end
 saccade_log=cell(9,48);
 for i=1:9
-    for j=1:size(spd,2)
+    
         disp(sprintf('\nUser:%d',i));
-        smooth_detection(spd,i,j);
-        saccade_log{i,j}=saccade_l;
-    end
+        smooth_detection(shaun,i,1);
+        saccade_log{i,1}=saccade_l;
+    
 end
 minimal_saccade=cellfun(@(x) min(x),saccade_log,'UniformOutput',false); 
 maximum_saccade=cellfun(@(x) max(x),saccade_log,'UniformOutput',false); 
