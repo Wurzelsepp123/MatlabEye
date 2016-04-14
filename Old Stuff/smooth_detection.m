@@ -33,6 +33,10 @@ end
 
 
 use_filter=true;
+avg_filter=1/20*[-1 -1 -1 -1 0 1 1 1 1];
+x_filtered=filter(avg_filter,1,data{user,cluster}(:,2));
+y_filtered=filter(avg_filter,1,data{user,cluster}(:,3));
+
 if use_filter
 %     data_filtered=[data{user,cluster}(:,1),filter2(fspecial('gaussian',2),data{user,cluster}(:,2:3))];    
     x_smooth=smooth(data{user,cluster}(:,1),data{user,cluster}(:,2));
@@ -46,12 +50,12 @@ end
 
 
 %% Plot filtered data
-% figure
-% scatter3(data_filtered(:,1),data_filtered(:,2),data_filtered(:,3),10,'r')
-% xlabel('Time'),ylabel('X'),zlabel('Y')
-% hold on
-% scatter3(data{user,cluster}(:,1),data{user,cluster}(:,2),data{user,cluster}(:,3),10,'b')
-% hold off
+figure
+scatter3(data{user,cluster}(:,1),x_smooth,y_smooth,10,'r')
+xlabel('Time'),ylabel('X'),zlabel('Y')
+hold on
+scatter3(data{user,cluster}(:,1),data{user,cluster}(:,2),data{user,cluster}(:,3),10,'b')
+hold off
 %%
 
 %data_d =cellfun(@(x) downsample(x,15),data,'UniformOutput',false); % only take every 16. value: 1000Hz->62.5Hz
@@ -113,34 +117,46 @@ for i=1:size(a_x,1)
 end
 
 %check if time between two saccades >t_min
-j=0;
-for i=1:size(s_pos,1)
+j=1;
+i=1;
+while i<size(s_pos,1)
     if s_pos(i)
         while j<t_min/2 && i+j<size(s_pos,1)
             if s_pos(i+j)
                 s_pos(i:i+j)=1;   
-                i=i+j+1;
+                i=i+j-1;
                 break;
             end
             j=j+1;
         end
-        j=0;
+        j=1;
     end
+    i=i+1;
 end
 
 %Plots
-figure;
+figure('Name','Y-Acceleration');
 plot(a_y);
 hold on
 plot(v_y*1000);
 hold off
-figure
-c=bsxfun(@times,s_pos,[1 0 0]);
-scatter(1:size(a_y),a_y,10,c);
 hold on
 plot(1:size(a_y,1), ty*ones(1,size(a_y,1)), 'LineWidth', 5);
 plot(1:size(a_y,1), -ty*ones(1,size(a_y,1)), 'LineWidth', 5);
 hold off
+
+
+figure('Name','X-Acceleration')
+plot(a_x);
+hold on
+plot(v_x*1000);
+hold off
+
+% figure
+% c=bsxfun(@times,s_pos,[1 0 0]);
+% scatter(1:size(a_y),a_y,10,c);
+
+
 
 %% saccade main direction (for on/offset detection)
 
@@ -159,13 +175,14 @@ for i=2:size(s_index)
     end
     %if last s_index element is a seperate peak
     if (i==size(s_index,1) && n==0)
+        [M,I]=max(abs(v_y(s_index(i-(n)):s_index(i-1))));
         max_ind(k)=s_index(i);
         k=k+1;
     end
 end
 
-for i=1:size(max_ind,1)
-    [onset(i),offset(i)]=getDirection(data_d,max_ind(i));
+for i=1:size(max_ind,2)
+    [onset(i),offset(i)]=getOnOffset(data_d,max_ind(i));
 end
 
 
@@ -331,7 +348,9 @@ figure
 scatter3(data_d(:,1),data_d(:,2),data_d(:,3),10,color)
 xlabel('Time'),ylabel('X'),zlabel('Y')
 hold on
-    scatter3(data_d(find(s_pos),1),data_d(find(s_pos),2),data_d(find(s_pos),3),15,'k')
+for i=1:size(onset,2)
+    scatter3(data_d(onset(i):offset(i),1),data_d(onset(i):offset(i),2),data_d(onset(i):offset(i),3),15,'k')   
+end
 hold off
 
 if saccade

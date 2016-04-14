@@ -391,7 +391,7 @@ saccade_log=cell(9,48);
 for i=1:9
     
         disp(sprintf('\nUser:%d',i));
-        smooth_detection(shaun,i,1);
+        smooth_detection(spd,i,1);
         saccade_log{i,1}=saccade_l;
     
 end
