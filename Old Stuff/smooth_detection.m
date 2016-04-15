@@ -33,9 +33,17 @@ end
 
 
 use_filter=true;
-avg_filter=1/20*[-1 -1 -1 -1 0 1 1 1 1];
-x_filtered=filter(avg_filter,1,data{user,cluster}(:,2));
-y_filtered=filter(avg_filter,1,data{user,cluster}(:,3));
+
+%test filter
+% avg_filter=1/20*[-1 -1 -1 -1 0 1 1 1 1];
+% data_d_filter=downsample(data{user,cluster}(:,1:3),2);
+% vx_filtered=filter(avg_filter,1,data_d_filter(:,2));
+% vy_filtered=filter(avg_filter,1,data_d_filter(:,3));
+% 
+% ax_filtered=filter(avg_filter,1,vx_filtered);
+% ay_filtered=filter(avg_filter,1,vy_filtered);
+
+
 
 if use_filter
 %     data_filtered=[data{user,cluster}(:,1),filter2(fspecial('gaussian',2),data{user,cluster}(:,2:3))];    
@@ -50,12 +58,12 @@ end
 
 
 %% Plot filtered data
-figure
-scatter3(data{user,cluster}(:,1),x_smooth,y_smooth,10,'r')
-xlabel('Time'),ylabel('X'),zlabel('Y')
-hold on
-scatter3(data{user,cluster}(:,1),data{user,cluster}(:,2),data{user,cluster}(:,3),10,'b')
-hold off
+% figure
+% scatter3(data{user,cluster}(:,1),x_smooth,y_smooth,10,'r')
+% xlabel('Time'),ylabel('X'),zlabel('Y')
+% hold on
+% scatter3(data{user,cluster}(:,1),data{user,cluster}(:,2),data{user,cluster}(:,3),10,'b')
+% hold off
 %%
 
 %data_d =cellfun(@(x) downsample(x,15),data,'UniformOutput',false); % only take every 16. value: 1000Hz->62.5Hz
@@ -84,6 +92,8 @@ n=1;
 %Saccade and PSO threshold
 tx=2.3e4;
 ty=4.2e4;
+tx_filter=0.01;
+ty_filter=0.015;
 t_min=20; %minimum time between two saccades in ms
 
 %calculate acceleration--> d/t^2
@@ -116,6 +126,23 @@ for i=1:size(a_x,1)
     end
 end
 
+%for filtered data
+% for i=1:size(ax_filtered,1)
+%     %use default values
+%     if i<=200
+%         if (abs(ax_filtered(i))>tx_filter || abs(ay_filtered(i))>ty_filter)
+%             s_pos(i)=1;
+%         end
+%     %calculate new treshold based on last samples
+%     elseif i>200
+%         tx=6*std(ax_filtered(i-200:i-1));
+%         ty=6*std(ay_filtered(i-200:i-1));
+%         if (abs(ax_filtered(i))>tx_filter || abs(ay_filtered(i))>ty_filter)
+%             s_pos(i)=1;
+%         end
+%     end
+% end
+
 %check if time between two saccades >t_min
 j=1;
 i=1;
@@ -140,6 +167,13 @@ plot(a_y);
 hold on
 plot(v_y*1000);
 hold off
+
+% figure('Name','Y_filter-Acceleration');
+% plot(ay_filtered);
+% hold on
+% plot(vy_filtered*1000);
+% hold off
+
 hold on
 plot(1:size(a_y,1), ty*ones(1,size(a_y,1)), 'LineWidth', 5);
 plot(1:size(a_y,1), -ty*ones(1,size(a_y,1)), 'LineWidth', 5);
@@ -163,27 +197,29 @@ hold off
 %find maximum peak of each saccade
 n=0;
 k=1;
-s_index=find(s_pos);
-for i=2:size(s_index)
-    if s_index(i)==s_index(i-1)+1
-        n=n+1;
-    else
-        [M,I]=max(abs(v_y(s_index(i-(n+1)):s_index(i-1))));
-        max_ind(k)=s_index(i-(n+1))+I-1;
-        k=k+1;
-        n=0;
-    end
-    %if last s_index element is a seperate peak
-    if (i==size(s_index,1) && n==0)
-        [M,I]=max(abs(v_y(s_index(i-(n)):s_index(i-1))));
-        max_ind(k)=s_index(i);
-        k=k+1;
-    end
-end
+s_index=find(s_pos)';
 
-for i=1:size(max_ind,2)
-    [onset(i),offset(i)]=getOnOffset(data_d,max_ind(i));
+%group consecutive values and get vel peak
+F = diff(find([1 diff(s_index - (1:length(s_index)))]));
+sequ=mat2cell(s_index,1,[F length(s_index)-sum(F)]);
+for i=1:size(sequ,2)
+     [M,I]=max(abs(v_y(sequ{i}(1):sequ{i}(end))));
+     max_ind(i)=sequ{i}(I);    
 end
+%detect on and offset of each saccade
+if size(max_ind,2)>0
+    for i=1:size(max_ind,2)
+        [onset(i),offset(i)]=getOnOffset(data_d,max_ind(i));
+    end
+end
+%% detect sp in intersaccadic intervall
+intersaccade=cell(size(onset,2)+1,1);
+intersaccade{1}=data_d(1:onset(1),:);
+for i=2:size(onset,2)
+    intersaccade{i}=data_d(offset(i-1):onset(i),:)   
+end
+intersaccade{i+1}=data_d(offset(i):end,:)
+
 
 
 while(k<=num_windows)

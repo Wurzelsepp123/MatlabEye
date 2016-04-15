@@ -31,15 +31,10 @@ d=abs(alpha-dir)>60;
 d=double(d);
 
 %get sum over three neighbouring values
-tic
+
 s_a=conv([1 1 1],d);
-toc
 s_a=s_a(3:size(s_a,1)-2);
-% tic 
-% for i=1:size(d)-2
-%     s(i)=sum(d(i:i+2));
-% end
-% toc
+
 
 %find closest consecutive deviation
 ind_a=find(s_a==3);

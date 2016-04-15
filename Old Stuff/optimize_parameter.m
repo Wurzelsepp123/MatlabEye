@@ -7,7 +7,7 @@
 
 clear
 clc
-diary on
+%diary on
 
 skip_samples_train = 200;   % Number of samples which are skipped when  
                             % generating ringpuffersequences for HMM-Training
